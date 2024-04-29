@@ -342,7 +342,7 @@ def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MD
             # return iou - (c_area - union) / c_area  # GIoU
             c_area = torch.max(cw * ch + eps, union) # convex area
             return iou - torch.pow((c_area - union) / c_area + eps, alpha)  # GIoU
-     elif MDPIoU:
+    elif MDPIoU:
         d1 = (b2_x1 - b1_x1) ** 2 + (b2_y1 - b1_y1) ** 2
         d2 = (b2_x2 - b1_x2) ** 2 + (b2_y2 - b1_y2) ** 2
         mpdiou_hw_pow = feat_h ** 2 + feat_w ** 2
