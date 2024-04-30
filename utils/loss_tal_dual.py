@@ -5,7 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from utils.general import xywh2xyxy
-from utils.metrics import bbox_iou, bbox_alpha_iou
+from utils.metrics import bbox_iou, bbox_alpha_iou, bbox_n_iou
 from utils.tal.anchor_generator import dist2bbox, make_anchors, bbox2dist
 from utils.tal.assigner import TaskAlignedAssigner
 from utils.torch_utils import de_parallel
@@ -72,6 +72,8 @@ class BboxLoss(nn.Module):
         target_bboxes_pos = torch.masked_select(target_bboxes, bbox_mask).view(-1, 4)
         bbox_weight = torch.masked_select(target_scores.sum(-1), fg_mask).unsqueeze(-1)
 
+        #n_iou
+        iou = bbox_alpha_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, n=9, CIoU=True)
         #alpha iou
         iou = bbox_alpha_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, alpha=3, CIoU=True) 
         #iou = bbox_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, CIoU=True)
