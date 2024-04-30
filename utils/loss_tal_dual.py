@@ -75,7 +75,8 @@ class BboxLoss(nn.Module):
         #n_iou
         iou = bbox_alpha_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, n=9, CIoU=True)
         #alpha iou
-        iou = bbox_alpha_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, alpha=3, CIoU=True) 
+        #iou = bbox_alpha_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, alpha=3, CIoU=True) 
+        #iou
         #iou = bbox_iou(pred_bboxes_pos, target_bboxes_pos, xywh=False, CIoU=True)
         loss_iou = 1.0 - iou
         
