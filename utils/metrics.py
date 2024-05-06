@@ -251,7 +251,7 @@ class WIoU_Scale:
         return 1
 
 
-def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=False, feat_h=640, feat_w=640, eps=1e-7):
+def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=False, EIoU=False, feat_h=640, feat_w=640, eps=1e-7):
     # Returns Intersection over Union (IoU) of box1(1,4) to box2(n,4)
 
     # Get the coordinates of bounding boxes
@@ -275,10 +275,10 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=F
 
     # IoU
     iou = inter / union
-    if CIoU or DIoU or GIoU:
+    if CIoU or DIoU or GIoU or EIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
-        if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
+        if CIoU or DIoU or EIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center dist ** 2
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
@@ -286,6 +286,12 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=F
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
+            elif EIoU:
+                rho_w2 = ((b2_x2 - b2_x1) - (b1_x2 - b1_x1)) ** 2
+                rho_h2 = ((b2_y2 - b2_y1) - (b1_y2 - b1_y1)) ** 2
+                cw2 = cw ** 2 + eps
+                ch2 = ch ** 2 + eps
+                return iou - (rho2 / c2 + rho_w2 / cw2 + rho_h2 / ch2) # EIou
             return iou - rho2 / c2  # DIoU
         c_area = cw * ch + eps  # convex area
         return iou - (c_area - union) / c_area  # GIoU https://arxiv.org/pdf/1902.09630.pdf
@@ -296,7 +302,7 @@ def bbox_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=F
         return iou - d1 / mpdiou_hw_pow - d2 / mpdiou_hw_pow  # MPDIoU
     return iou  # IoU
 
-def bbox_n_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=False, feat_h=640, feat_w=640, eps=1e-7, n=5):
+def bbox_n_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, EIoU=False, MDPIoU=False, feat_h=640, feat_w=640, eps=1e-7, n=5):
     # Returns Intersection over Union (IoU) of box1(1,4) to box2(n,4)
     # update 30/4/2024
     # Get the coordinates of bounding boxes
@@ -320,10 +326,10 @@ def bbox_n_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU
 
     # IoU
     iou = (inter + n*inter) / (union + n*inter)
-    if CIoU or DIoU or GIoU:
+    if CIoU or DIoU or GIoU or EIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
-        if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
+        if CIoU or DIoU or EIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = cw ** 2 + ch ** 2 + eps  # convex diagonal squared
             rho2 = ((b2_x1 + b2_x2 - b1_x1 - b1_x2) ** 2 + (b2_y1 + b2_y2 - b1_y1 - b1_y2) ** 2) / 4  # center dist ** 2
             if CIoU:  # https://github.com/Zzh-tju/DIoU-SSD-pytorch/blob/master/utils/box/box_utils.py#L47
@@ -331,6 +337,12 @@ def bbox_n_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU
                 with torch.no_grad():
                     alpha = v / (v - iou + (1 + eps))
                 return iou - (rho2 / c2 + v * alpha)  # CIoU
+            elif EIoU:
+                rho_w2 = ((b2_x2 - b2_x1) - (b1_x2 - b1_x1)) ** 2
+                rho_h2 = ((b2_y2 - b2_y1) - (b1_y2 - b1_y1)) ** 2
+                cw2 = cw ** 2 + eps
+                ch2 = ch ** 2 + eps
+                return iou - (rho2 / c2 + rho_w2 / cw2 + rho_h2 / ch2) # EIou
             return iou - rho2 / c2  # DIoU
         c_area = cw * ch + eps  # convex area
         return iou - (c_area - union) / c_area  # GIoU https://arxiv.org/pdf/1902.09630.pdf
@@ -342,7 +354,7 @@ def bbox_n_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU
     return iou  # IoU
 
 
-def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MDPIoU=False,alpha=2, feat_h=640, feat_w=640, eps=1e-7):
+def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, EIoU= False, CIoU=False, MDPIoU=False,alpha=3, feat_h=640, feat_w=640, eps=1e-7):
     
 # Get the coordinates of bounding boxes
     if xywh:  # transform from xywh to xyxy
@@ -368,10 +380,10 @@ def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MD
     # iou = inter / union
     iou = torch.pow(inter/union + eps, alpha)
     # beta = 2 * alpha
-    if GIoU or DIoU or CIoU:
+    if GIoU or DIoU or CIoU or EIoU:
         cw = torch.max(b1_x2, b2_x2) - torch.min(b1_x1, b2_x1)  # convex (smallest enclosing box) width
         ch = torch.max(b1_y2, b2_y2) - torch.min(b1_y1, b2_y1)  # convex height
-        if CIoU or DIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
+        if CIoU or DIoU or EIoU:  # Distance or Complete IoU https://arxiv.org/abs/1911.08287v1
             c2 = (cw ** 2 + ch ** 2) ** alpha + eps  # convex diagonal
             rho_x = torch.abs(b2_x1 + b2_x2 - b1_x1 - b1_x2)
             rho_y = torch.abs(b2_y1 + b2_y2 - b1_y1 - b1_y2)
@@ -384,6 +396,12 @@ def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MD
                     alpha_ciou = v / ((1 + eps) - inter / union + v)
                 # return iou - (rho2 / c2 + v * alpha_ciou)  # CIoU
                 return iou - (rho2 / c2 + torch.pow(v * alpha_ciou + eps, alpha))  # CIoU
+            elif EIoU:
+                rho_w2 = ((b2_x2 - b2_x1) - (b1_x2 - b1_x1)) ** 2
+                rho_h2 = ((b2_y2 - b2_y1) - (b1_y2 - b1_y1)) ** 2
+                cw2 = cw ** 2 + eps
+                ch2 = ch ** 2 + eps
+                return iou - (torch.pow(rho2 / c2, alpha) + torch.pow(rho_w2 / cw2, alpha) + torch.pow(rho_h2 / ch2, alpha)) # EIou
             # GIoU https://arxiv.org/pdf/1902.09630.pdf
             # c_area = cw * ch + eps  # convex area
             # return iou - (c_area - union) / c_area  # GIoU
@@ -393,7 +411,7 @@ def bbox_alpha_iou(box1, box2, xywh=True, GIoU=False, DIoU=False, CIoU=False, MD
         d1 = (b2_x1 - b1_x1) ** 2 + (b2_y1 - b1_y1) ** 2
         d2 = (b2_x2 - b1_x2) ** 2 + (b2_y2 - b1_y2) ** 2
         mpdiou_hw_pow = feat_h ** 2 + feat_w ** 2
-        return iou - d1 / mpdiou_hw_pow - d2 / mpdiou_hw_pow  # MPDIoU
+        return iou - d1 / mpdiou_hw_pow - d2 / mpdiou_hw_pow  # MPDIoU        
     return iou # torch.log(iou+eps) or iou
 
 def box_iou(box1, box2, eps=1e-7):
